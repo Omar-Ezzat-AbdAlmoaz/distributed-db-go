@@ -2,21 +2,62 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"distributed-db-go/database"
 	"distributed-db-go/utils"
 )
 
-var DB *database.Database // هنربطها من main.go
+type InitDatabaseRequest struct {
+	DBName   string `json:"db_name"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+	Host     string `json:"host"` // مثل: localhost:3306
+}
+
+func InitDatabaseHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req InitDatabaseRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "❌ Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	var err error
+	if utils.IsMaster {
+		// الماستر ينشئ القاعدة لو مش موجودة
+		err = database.ConnectOrCreateDatabase(req.User, req.Password, req.Host, req.DBName)
+		if err != nil {
+			http.Error(w, "❌ Master DB init failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// يرسل لباقي الـ Slaves
+		for _, node := range utils.OtherNodes {
+			go utils.SendPostRequest("http://"+node.Address+"/init_database", req)
+		}
+
+	} else {
+		// السليف بس يتصل بقاعدة موجودة
+		err = database.ConnectToExistingDatabase(req.User, req.Password, req.Host, req.DBName)
+		if err != nil {
+			http.Error(w, "❌ Slave DB connect failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Write([]byte("✅ Database connected: " + req.DBName))
+}
 
 type CreateTableRequest struct {
 	TableName string   `json:"table_name"`
 	Columns   []string `json:"columns"`
 }
 
-// POST /create_table
 func CreateTableHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -24,67 +65,51 @@ func CreateTableHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateTableRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "Error in the data sent ", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "❌ Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	err = DB.CreateTable(req.TableName, req.Columns)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("❌ Table creation failed: %v", err), http.StatusInternalServerError)
+	if err := database.CreateTable(req.TableName, req.Columns); err != nil {
+		http.Error(w, "❌ "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("✅ The table was created successfully "))
+	w.Write([]byte("✅ Table created successfully"))
 
 	if utils.IsMaster {
 		for _, node := range utils.OtherNodes {
 			go utils.SendPostRequest("http://"+node.Address+"/create_table", req)
 		}
 	}
-
 }
 
 type InsertRequest struct {
 	TableName string            `json:"table_name"`
-	RowID     string            `json:"row_id"`
 	Data      map[string]string `json:"data"`
 }
 
 func InsertHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req InsertRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "❌ Format error ", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "❌ Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	table, exists := DB.Tables[req.TableName]
-	if !exists {
-		http.Error(w, "❌ Table not found ", http.StatusNotFound)
+	if err := database.Insert(req.TableName, req.Data); err != nil {
+		http.Error(w, "❌ "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = table.Insert(req.RowID, req.Data)
-	if err != nil {
-		http.Error(w, "❌ Input failure: "+err.Error(), http.StatusBadRequest)
-		return
-	}
+	w.Write([]byte("✅ Inserted successfully"))
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("✅ Data entry was successful "))
-
-	// لو النود الحالي Master، ابعت البيانات للنودز التانية  🔁 Replicate للـ Slaves لو Master
 	if utils.IsMaster {
 		for _, node := range utils.OtherNodes {
-			// نجهز نسخة من نفس الـ request ونبعتها لباقي النودز
 			go utils.SendPostRequest("http://"+node.Address+"/insert", req)
 		}
 	}
@@ -98,30 +123,22 @@ type UpdateRequest struct {
 
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req UpdateRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "❌ Format error", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "❌ Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	table, exists := DB.Tables[req.TableName]
-	if !exists {
-		http.Error(w, "❌ Table not found", http.StatusNotFound)
+	if err := database.Update(req.TableName, req.RowID, req.NewData); err != nil {
+		http.Error(w, "❌ "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = table.Update(req.RowID, req.NewData)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	w.Write([]byte("✅ Record updated"))
+	w.Write([]byte("✅ Updated successfully"))
 
 	if utils.IsMaster {
 		for _, node := range utils.OtherNodes {
@@ -137,30 +154,22 @@ type DeleteRecordRequest struct {
 
 func DeleteRecordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req DeleteRecordRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "❌ Format error", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "❌ Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	table, exists := DB.Tables[req.TableName]
-	if !exists {
-		http.Error(w, "❌ Table not found", http.StatusNotFound)
+	if err := database.DeleteRow(req.TableName, req.RowID); err != nil {
+		http.Error(w, "❌ "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = table.DeleteRow(req.RowID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	w.Write([]byte("✅ Record deleted"))
+	w.Write([]byte("✅ Row deleted"))
 
 	if utils.IsMaster {
 		for _, node := range utils.OtherNodes {
@@ -175,20 +184,18 @@ type DeleteTableRequest struct {
 
 func DeleteTableHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req DeleteTableRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "❌ Format error", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "❌ Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	err = DB.DeleteTable(req.TableName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	if err := database.DeleteTable(req.TableName); err != nil {
+		http.Error(w, "❌ "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -202,38 +209,55 @@ func DeleteTableHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SelectHandler(w http.ResponseWriter, r *http.Request) {
-	tableName := r.URL.Query().Get("table")
-	if tableName == "" {
-		http.Error(w, "❌ برجاء تحديد اسم الجدول", http.StatusBadRequest)
+	table := r.URL.Query().Get("table")
+	if table == "" {
+		http.Error(w, "❌ Missing table name", http.StatusBadRequest)
 		return
 	}
 
-	table, exists := DB.Tables[tableName]
-	if !exists {
-		http.Error(w, "❌ Table not found", http.StatusNotFound)
+	records, err := database.GetAll(table)
+	if err != nil {
+		http.Error(w, "❌ "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	results := table.GetAll()
-	json.NewEncoder(w).Encode(results)
+	json.NewEncoder(w).Encode(records)
 }
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
-	tableName := r.URL.Query().Get("table")
+	table := r.URL.Query().Get("table")
 	column := r.URL.Query().Get("column")
 	value := r.URL.Query().Get("value")
 
-	if tableName == "" || column == "" || value == "" {
-		http.Error(w, "❌ برجاء تحديد table, column و value", http.StatusBadRequest)
+	if table == "" || column == "" || value == "" {
+		http.Error(w, "❌ Missing parameters", http.StatusBadRequest)
 		return
 	}
 
-	table, exists := DB.Tables[tableName]
-	if !exists {
-		http.Error(w, "❌ Table not found", http.StatusNotFound)
+	records, err := database.SearchByColumn(table, column, value)
+	if err != nil {
+		http.Error(w, "❌ "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	results := table.SearchByColumn(column, value)
-	json.NewEncoder(w).Encode(results)
+	json.NewEncoder(w).Encode(records)
+}
+
+func DropDatabaseHandler(w http.ResponseWriter, r *http.Request) {
+	if !utils.IsMaster {
+		http.Error(w, "❌ Only master can drop database", http.StatusForbidden)
+		return
+	}
+
+	err := database.DropDatabase("distributed_db") // replace with actual name
+	if err != nil {
+		http.Error(w, "❌ "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("🧨 Database dropped"))
+
+	for _, node := range utils.OtherNodes {
+		go utils.SendPostRequest("http://"+node.Address+"/drop_database", nil)
+	}
 }

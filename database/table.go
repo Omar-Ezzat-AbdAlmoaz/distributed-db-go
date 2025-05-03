@@ -1,61 +1,114 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
+	"strings"
 )
 
-// جدول يحتوي على الأعمدة (Columns) و السجلات (Rows)
-type Table struct {
-	Name    string
-	Columns []string
-	Rows    map[string]map[string]string // RowID -> (Column -> Value)
-}
+// إدخال صف جديد
+func Insert(table string, data map[string]string) error {
+	cols := []string{}
+	vals := []string{}
+	args := []interface{}{}
 
-// إضافة سجل جديد للجدول
-func (t *Table) Insert(rowID string, data map[string]string) error {
-	// تأكد من الأعمدة
-	for _, col := range t.Columns {
-		if _, ok := data[col]; !ok {
-			return fmt.Errorf(" Column %s is missing in the data", col)
-		}
+	for k, v := range data {
+		cols = append(cols, k)
+		vals = append(vals, "?")
+		args = append(args, v)
 	}
-	t.Rows[rowID] = data
+
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(cols, ", "), strings.Join(vals, ", "))
+	_, err := DB.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("❌ Insert failed: %v", err)
+	}
 	return nil
 }
 
-func (t *Table) Update(rowID string, newData map[string]string) error {
-	row, exists := t.Rows[rowID]
-	if !exists {
-		return fmt.Errorf(" Row %s does not exist ", rowID)
-	}
+// تحديث صف
+func Update(table, rowID string, newData map[string]string) error {
+	set := []string{}
+	args := []interface{}{}
+
 	for k, v := range newData {
-		row[k] = v
+		set = append(set, fmt.Sprintf("%s = ?", k))
+		args = append(args, v)
+	}
+	args = append(args, rowID)
+
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE id = ?", table, strings.Join(set, ", "))
+	_, err := DB.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("❌ Update failed: %v", err)
 	}
 	return nil
 }
 
-func (t *Table) DeleteRow(rowID string) error {
-	if _, exists := t.Rows[rowID]; !exists {
-		return fmt.Errorf(" Row %s does not exist", rowID)
+// حذف صف
+func DeleteRow(table, rowID string) error {
+	_, err := DB.Exec(fmt.Sprintf("DELETE FROM %s WHERE id = ?", table), rowID)
+	if err != nil {
+		return fmt.Errorf("❌ Delete failed: %v", err)
 	}
-	delete(t.Rows, rowID)
 	return nil
 }
 
-func (t *Table) GetAll() []map[string]string {
-	var results []map[string]string
-	for _, row := range t.Rows {
-		results = append(results, row)
+// استرجاع كل الصفوف
+func GetAll(table string) ([]map[string]string, error) {
+	rows, err := DB.Query(fmt.Sprintf("SELECT * FROM %s", table))
+	if err != nil {
+		return nil, err
 	}
-	return results
-}
+	defer rows.Close()
 
-func (t *Table) SearchByColumn(column string, value string) []map[string]string {
-	var results []map[string]string
-	for _, row := range t.Rows {
-		if row[column] == value {
-			results = append(results, row)
+	cols, _ := rows.Columns()
+	var result []map[string]string
+
+	for rows.Next() {
+		values := make([]sql.RawBytes, len(cols))
+		scanArgs := make([]interface{}, len(cols))
+		for i := range values {
+			scanArgs[i] = &values[i]
 		}
+
+		rows.Scan(scanArgs...)
+
+		row := map[string]string{}
+		for i, col := range cols {
+			row[col] = string(values[i])
+		}
+		result = append(result, row)
 	}
-	return results
+	return result, nil
+}
+
+// البحث في جدول حسب قيمة عمود
+func SearchByColumn(table, column, value string) ([]map[string]string, error) {
+	query := fmt.Sprintf("SELECT * FROM %s WHERE %s = ?", table, column)
+	rows, err := DB.Query(query, value)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	cols, _ := rows.Columns()
+	var result []map[string]string
+
+	for rows.Next() {
+		values := make([]sql.RawBytes, len(cols))
+		scanArgs := make([]interface{}, len(cols))
+		for i := range values {
+			scanArgs[i] = &values[i]
+		}
+
+		rows.Scan(scanArgs...)
+
+		row := map[string]string{}
+		for i, col := range cols {
+			row[col] = string(values[i])
+		}
+		result = append(result, row)
+	}
+	return result, nil
 }
