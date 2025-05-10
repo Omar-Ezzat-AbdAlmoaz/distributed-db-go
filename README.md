@@ -19,12 +19,43 @@ It demonstrates core distributed system concepts including **data replication**,
 
 ---
 
-## 🧱 Architecture
+## 🧱 Architecture 
+
+        +---------------------------+
+        |      Master Node          |
+        | - DB Write Access         | 
+        | - Create & Drop Table     |  
+        | - Broadcact To Slaves     | 
+        | - Send Notifications      |
+        +---------------------------+
+                      |
+                      |  <--Send Stauts-->
+                ------------------------------------------
+                |                                         | 
+                |                                         |
+                |                                         |
+  +---------------------------+                           |
+  |      Slave Node  1        |                           |
+  | - Read DB                 |                           |
+  | - Perform operations on   |                           |
+  |  Table                    |                           | 
+  | - Send Notifications      |                           |
+  +---------------------------+                           |
+                                                          +---------------------------+                           
+                                                          |      Slave Node  2        |                           
+                                                          | - Read DB                 |                           
+                                                          | - Perform operations on   |                           
+                                                          |  Table                    |                            
+                                                          | - Send Notifications      |                           
+                                                          +---------------------------+ 
+
+
+        
 
 - 3+ Nodes communicating via HTTP.
-- One **Master Node** (can create tables and manage schema).
+- One **Master Node** (can create & drop DB , create tables and manage schema).
 - Multiple **Slave Nodes** (can perform data queries).
-- All nodes store data in-memory independently.
+- All nodes store data MYSql AppServer.
 - Configuration is defined in `config.json`.
 
 ---
