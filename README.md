@@ -10,7 +10,7 @@ It demonstrates core distributed system concepts including **data replication**,
 
 ## 🚀 Features
 
-- Master node creates databases and tables dynamically.
+- Master node creates,drop databases and tables dynamically.
 - All nodes (master and slaves) can:
   - `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `SEARCH` records.
 - Automatic data replication to all nodes.
@@ -63,6 +63,17 @@ go run main.go 8082   # Slave 2
 ---
 
 ## 🧪 Usage Examples
+### 📌 Create database (master only)
+
+```http
+POST /init_database
+{
+  "db_name": "DDB0",
+  "user": "root",
+  "password": "rootroot",
+  "host": "localhost:3306"
+}
+```
 
 ### 📌 Create Table (master only)
 
@@ -126,7 +137,7 @@ POST /delete_record
 }
 ```
 
-### 📌 Delete Table
+### 📌 Delete Table (master only)
 
 ```http
 POST /delete_table
@@ -163,8 +174,4 @@ POST /delete_table
 - Implement full leader election (Bully/Raft).
 - Add Web GUI for visualization.
 
----
 
-## 👨‍💻 Author
-
-Developed by [AGMAD TEAM] for distributed systems coursework.
