@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-var CurrentMaster string
-
 func StartMasterMonitor() {
 	go func() {
 		for {
@@ -19,11 +17,11 @@ func StartMasterMonitor() {
 
 			resp, err := http.Get("http://" + CurrentMaster + "/ping")
 			if err != nil || resp.StatusCode != 200 {
-				fmt.Println("❌ Master is down! Trying to become master...")
+				fmt.Println("Master is down! Trying to become master...")
 
 				// تحويل الـ Node ده إلى Master مؤقتًا
 				IsMaster = true
-				fmt.Println("⚠️ [WARNING] Node promoted to TEMP MASTER")
+				fmt.Println("[WARNING] Node promoted to TEMP MASTER")
 			}
 		}
 	}()

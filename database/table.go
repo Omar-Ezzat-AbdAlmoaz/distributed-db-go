@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// إدخال صف جديد
 func Insert(table string, data map[string]string) error {
 	cols := []string{}
 	vals := []string{}
@@ -21,8 +20,9 @@ func Insert(table string, data map[string]string) error {
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(cols, ", "), strings.Join(vals, ", "))
 	_, err := DB.Exec(query, args...)
 	if err != nil {
-		return fmt.Errorf("❌ Insert failed: %v", err)
+		return fmt.Errorf("Insert failed: %v", err)
 	}
+	//fmt.Println("Insert into:", table, "table")
 	return nil
 }
 
@@ -40,21 +40,21 @@ func Update(table, rowID string, newData map[string]string) error {
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE id = ?", table, strings.Join(set, ", "))
 	_, err := DB.Exec(query, args...)
 	if err != nil {
-		return fmt.Errorf("❌ Update failed: %v", err)
+		return fmt.Errorf("Update failed: %v", err)
 	}
+	//fmt.Println("Updata element in:", table, "table")
 	return nil
 }
 
-// حذف صف
 func DeleteRow(table, rowID string) error {
 	_, err := DB.Exec(fmt.Sprintf("DELETE FROM %s WHERE id = ?", table), rowID)
 	if err != nil {
-		return fmt.Errorf("❌ Delete failed: %v", err)
+		return fmt.Errorf("Delete failed: %v", err)
 	}
+	//fmt.Println("Delete element from:", table, "table")
 	return nil
 }
 
-// استرجاع كل الصفوف
 func GetAll(table string) ([]map[string]string, error) {
 	rows, err := DB.Query(fmt.Sprintf("SELECT * FROM %s", table))
 	if err != nil {
@@ -80,10 +80,10 @@ func GetAll(table string) ([]map[string]string, error) {
 		}
 		result = append(result, row)
 	}
+	//fmt.Println("Show all elements:", table, "table")
 	return result, nil
 }
 
-// البحث في جدول حسب قيمة عمود
 func SearchByColumn(table, column, value string) ([]map[string]string, error) {
 	query := fmt.Sprintf("SELECT * FROM %s WHERE %s = ?", table, column)
 	rows, err := DB.Query(query, value)
@@ -110,5 +110,6 @@ func SearchByColumn(table, column, value string) ([]map[string]string, error) {
 		}
 		result = append(result, row)
 	}
+	fmt.Println("Searsh in:", table, "table")
 	return result, nil
 }

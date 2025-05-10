@@ -28,8 +28,13 @@ func LoadConfig(path string) (*Config, error) {
 	return &config, nil
 }
 
-var IsMaster bool
-var OtherNodes []NodeConfig
+var (
+	IsMaster            bool
+	OtherNodes          []NodeConfig
+	IsDBReady           bool
+	CurrentDatabaseName string
+	CurrentMaster       string
+)
 
 func InitRoles(currentAddress string, config *Config) {
 	for _, node := range config.Nodes {

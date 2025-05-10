@@ -11,19 +11,18 @@ import (
 )
 
 func main() {
-	// تحميل إعدادات النودز
+
 	config, err := utils.LoadConfig("config.json")
 	if err != nil {
 		log.Fatal("Error loading config:", err)
 	}
 
 	if len(os.Args) < 2 {
-		log.Fatal("❌ لازم تحدد البورت كـ argument زي: go run main.go 8080")
+		log.Fatal(" لازم تحدد البورت كـ argument زي: go run main.go 8080")
 	}
 	port := os.Args[1]
 	address := "localhost:" + port
 
-	// تحديد بيانات النود الحالية
 	var currentNode *utils.NodeConfig
 	for _, node := range config.Nodes {
 		if node.Address == address {
@@ -32,29 +31,28 @@ func main() {
 		}
 	}
 	if currentNode == nil {
-		log.Fatalf("❌ مفيش نود في config.json على العنوان %s", address)
+		log.Fatalf("مفيش نود في config.json على العنوان %s", address)
 	}
 
-	// تحديد الدور (ماستر أو سليف)
 	utils.InitRoles(address, config)
 	if utils.IsMaster {
-		fmt.Println("🎖️ This node is MASTER")
+		fmt.Println("This node is MASTER")
 	} else {
-		fmt.Println("👷 This node is SLAVE - Monitoring master...")
+		fmt.Println("This node is SLAVE - Monitoring master...")
 		utils.StartMasterMonitor()
 	}
 
 	// // الاتصال بـ MySQL
 	// database.ConnectOrCreateDatabase("root", "rootroot", "localhost:3306", "distributed_db") // عدّل الـ credentials حسب بيئتك
 
-	// تشغيل السيرفر
 	startServer(address)
 }
 
 func startServer(address string) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Node is alive ✅\n👋 Welcome to the Distributed DB Node"))
+		w.Write([]byte("Node is alive \n Welcome to the Distributed DB Node"))
 	})
+	http.HandleFunc("/notify", handlers.NotifyHandler)
 
 	http.HandleFunc("/init_database", handlers.InitDatabaseHandler)
 	http.HandleFunc("/create_table", handlers.CreateTableHandler)
@@ -66,9 +64,9 @@ func startServer(address string) {
 	http.HandleFunc("/search", handlers.SearchHandler)
 	http.HandleFunc("/drop_database", handlers.DropDatabaseHandler)
 
-	fmt.Println("🚀 Starting server on", address)
+	fmt.Println("Starting server on", address)
 	err := http.ListenAndServe(address, nil)
 	if err != nil {
-		log.Fatal("⚠️ Server failed:", err)
+		log.Fatal("Server failed:", err)
 	}
 }
