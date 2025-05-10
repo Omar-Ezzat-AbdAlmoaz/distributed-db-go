@@ -34,20 +34,20 @@ It demonstrates core distributed system concepts including **data replication**,
                 |                                         | 
                 |                                         |
                 |                                         |
-  +---------------------------+                           |
-  |      Slave Node  1        |                           |
-  | - Read DB                 |                           |
-  | - Perform operations on   |                           |
-  |  Table                    |                           | 
-  | - Send Notifications      |                           |
-  +---------------------------+                           |
-                                                          +---------------------------+                           
-                                                          |      Slave Node  2        |                           
-                                                          | - Read DB                 |                           
-                                                          | - Perform operations on   |                           
-                                                          |  Table                    |                            
-                                                          | - Send Notifications      |                           
-                                                          +---------------------------+ 
+  +---------------------------+                           +---------------------------+  
+  |      Slave Node  1        |                           |      Slave Node  2        |      
+  | - Read DB                 |                           | - Read DB                 |
+  | - Perform operations on   |                           | - Perform operations on   | 
+  |  Table                    |                           |  Table                    |      
+  | - Send Notifications      |                           | - Send Notifications      | 
+  +---------------------------+                           +---------------------------+ 
+                                                                                   
+                                                                               
+                                                                                     
+                                                                                    
+                                                                               
+                                                                                    
+                                                          
 
 
         
