@@ -19,39 +19,7 @@ It demonstrates core distributed system concepts including **data replication**,
 
 ---
 
-## 🧱 Architecture 
-
-        +---------------------------+
-        |      Master Node          |
-        | - DB Write Access         | 
-        | - Create & Drop Table     |  
-        | - Broadcact To Slaves     | 
-        | - Send Notifications      |
-        +---------------------------+
-                      |
-                      |  <--Send Stauts-->
-                ------------------------------------------
-                |                                         | 
-                |                                         |
-                |                                         |
-  +---------------------------+                           +---------------------------+  
-  |      Slave Node  1        |                           |      Slave Node  2        |      
-  | - Read DB                 |                           | - Read DB                 |
-  | - Perform operations on   |                           | - Perform operations on   | 
-  |  Table                    |                           |  Table                    |      
-  | - Send Notifications      |                           | - Send Notifications      | 
-  +---------------------------+                           +---------------------------+ 
-                                                                                   
-                                                                               
-                                                                                     
-                                                                                    
-                                                                               
-                                                                                    
-                                                          
-
-
-        
-
+## 🧱 Architecture                                                            
 - 3+ Nodes communicating via HTTP.
 - One **Master Node** (can create & drop DB , create tables and manage schema).
 - Multiple **Slave Nodes** (can perform data queries).
@@ -138,52 +106,10 @@ POST /init_database
 "values": ["John Doe", "john@example.com"]
 }'
 ```
+ 
 
-### 📌 Update
 
-```http
-POST /update
-{
-  "table_name": "students",
-  "row_id": "1",
-  "new_data": {
-    "grade": "A+"
-  }
-}
-```
 
-### 📌 Select All
-
-```http
-GET /select?table=students
-```
-
-### 📌 Search
-
-```http
-GET /search?table=students&column=name&value=Ahmed
-```
-
----
-
-### 📌 Delete Record
-
-```http
-POST /delete_record
-{
-  "table_name": "students",
-  "row_id": "1"
-}
-```
-
-### 📌 Delete Table (master only)
-
-```http
-POST /delete_table
-{
-  "table_name": "students"
-}
-```
 
 ## 🔁 Replication
 
@@ -204,6 +130,4 @@ POST /delete_table
 - Add Web GUI for visualization.
 
 ---
-
-## 👨‍💻 Author
 
