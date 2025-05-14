@@ -10,7 +10,7 @@ It demonstrates core distributed system concepts including **data replication**,
 
 ## 🚀 Features
 
-- Master node creates databases and tables dynamically.
+- Master node creates,drop databases and tables dynamically.
 - All nodes (master and slaves) can:
   - `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `SEARCH` records.
 - Automatic data replication to all nodes.
@@ -19,12 +19,43 @@ It demonstrates core distributed system concepts including **data replication**,
 
 ---
 
-## 🧱 Architecture
+## 🧱 Architecture 
+
+        +---------------------------+
+        |      Master Node          |
+        | - DB Write Access         | 
+        | - Create & Drop Table     |  
+        | - Broadcact To Slaves     | 
+        | - Send Notifications      |
+        +---------------------------+
+                      |
+                      |  <--Send Stauts-->
+                ------------------------------------------
+                |                                         | 
+                |                                         |
+                |                                         |
+  +---------------------------+                           +---------------------------+  
+  |      Slave Node  1        |                           |      Slave Node  2        |      
+  | - Read DB                 |                           | - Read DB                 |
+  | - Perform operations on   |                           | - Perform operations on   | 
+  |  Table                    |                           |  Table                    |      
+  | - Send Notifications      |                           | - Send Notifications      | 
+  +---------------------------+                           +---------------------------+ 
+                                                                                   
+                                                                               
+                                                                                     
+                                                                                    
+                                                                               
+                                                                                    
+                                                          
+
+
+        
 
 - 3+ Nodes communicating via HTTP.
-- One **Master Node** (can create tables and manage schema).
+- One **Master Node** (can create & drop DB , create tables and manage schema).
 - Multiple **Slave Nodes** (can perform data queries).
-- All nodes store data in-memory independently.
+- All nodes store data MYSql AppServer.
 - Configuration is defined in `config.json`.
 
                 ┌──────────────────────┐
@@ -76,6 +107,17 @@ distributed-db-go/
 ---
 
 ## 🧪 Usage Examples
+### 📌 Create database (master only)
+
+```http
+POST /init_database
+{
+  "db_name": "DDB0",
+  "user": "root",
+  "password": "rootroot",
+  "host": "localhost:3306"
+}
+```
 
 ### 📌 Create Table (master only)
 
@@ -134,7 +176,7 @@ POST /delete_record
 }
 ```
 
-### 📌 Delete Table
+### 📌 Delete Table (master only)
 
 ```http
 POST /delete_table
@@ -160,8 +202,8 @@ POST /delete_table
 
 - Save/load DB from files or BoltDB.
 - Add Web GUI for visualization.
+
 ---
 
 ## 👨‍💻 Author
 
-Developed by [AGMAD TEAM] for distributed systems coursework.
