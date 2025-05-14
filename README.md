@@ -27,14 +27,23 @@ It demonstrates core distributed system concepts including **data replication**,
 - All nodes store data in-memory independently.
 - Configuration is defined in `config.json`.
 
----
+                ┌──────────────────────┐
+                │      Client/API      │
+                └─────────┬────────────┘
+                          │
+                          ▼
+                ┌──────────────────────┐
+                │      Master Node     │
+                │  (Write & Read Ops)  │
+                └─────────┬────────────┘
+         ┌───────────────┼───────────────┐
+         ▼                               ▼
+┌────────────────────┐       ┌────────────────────┐
+│     Slave Node 1   │       │     Slave Node 2   │
+│   (Read & Replica) │       │   (Read & Replica) │
+└────────────────────┘       └────────────────────┘
 
-## ⚙️ Setup Instructions
-
-### ✅ Prerequisites
-
-- Go installed (version `>=1.19`)
-- Terminal or VS Code
+Replication: Master → Slaves
 
 ### 📁 Folder Structure
 
@@ -42,51 +51,50 @@ It demonstrates core distributed system concepts including **data replication**,
 distributed-db-go/
 │
 ├── main.go
-├── config.json
+├── go.sum
 ├── go.mod
-│
-├── /handlers        # HTTP API Handlers
-├── /database        # Table & Data logic
-├── /utils           # Config, networking, monitoring
+
 ```
+---
 
-### 📦 Run the Nodes
+## ⚙️ Setup Instructions
+1. Clone the repository and navigate to the project directory.
 
-Each terminal runs a different node:
+  ### 📦 Run the Nodes
+2. For the **Master Node**:
+   ```bash
+   go run main.go master 8080 0 0
+   go run main.go slave1 8081 8080 192.168.1.2
+   go run main.go slave2 8082 8080 192.168.1.2
 
-```bash
-go run main.go 8080   # Master
-go run main.go 8081   # Slave 1
-go run main.go 8082   # Slave 2
-```
 
+### ✅ Prerequisites
+
+- Go installed (version `>=1.19`)
+- Terminal or VS Code
+- MySQL Server (default root/rootroot)
 ---
 
 ## 🧪 Usage Examples
 
 ### 📌 Create Table (master only)
 
-```http
-POST /create_table
-{
-  "table_name": "students",
-  "columns": ["id", "name", "grade"]
-}
+```curl -X POST http:// IPv4 Address:8080/execute -d '{
+  "action": "create_db",
+  "database": "testdb"
+}'
+
 ```
 
 ### 📌 Insert Record (any node)
 
-```http
-POST /insert
-{
-  "table_name": "students",
-  "row_id": "1",
-  "data": {
-    "id": "1",
-    "name": "Ahmed",
-    "grade": "A"
-  }
-}
+```curl -X POST http://IPv4 Address:8080/execute -d '{
+"action": "insert",
+"database": "testdb",
+"table": "users",
+"columns": ["name", "email"],
+"values": ["John Doe", "john@example.com"]
+}'
 ```
 
 ### 📌 Update
@@ -137,32 +145,21 @@ POST /delete_table
 
 ## 🔁 Replication
 
-- All insert/update/delete/create_table actions are automatically forwarded from master to all slaves.
-- Slaves handle requests independently once data is replicated.
+- The master node automatically replicates write operations to the slave nodes via the `/replicate` endpoint.
 
 ---
 
 ## ⚠️ Fault Tolerance
 
-- If master node fails (ping unreachable), a slave promotes itself temporarily as a new master.
-- Simple logic using node priority (`node.id`) is used for leader fallback.
+- In the event of a master node failure, the slave nodes can be promoted to master through manual intervention.
 
 ---
 
-## 📌 Limitations
-
-- In-memory only (data lost after restart).
-- No persistent storage (yet).
-- No full consensus (e.g., Raft or Paxos).
-
----
 
 ## 📈 Future Improvements
 
 - Save/load DB from files or BoltDB.
-- Implement full leader election (Bully/Raft).
 - Add Web GUI for visualization.
-
 ---
 
 ## 👨‍💻 Author
