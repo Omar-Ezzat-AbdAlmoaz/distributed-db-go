@@ -63,8 +63,8 @@ distributed-db-go/
 2. For the **Master Node**:
    ```bash
    go run main.go master 8080 0 0
-   go run main.go slave1 8081 8080 192.168.1.2
-   go run main.go slave2 8082 8080 192.168.1.2
+   go run main.go slave1 8080 8080 <IPv4 Master>
+   go run main.go slave2 8080 8080 <IPv4 Master>
 
 
 ### ✅ Prerequisites
@@ -77,28 +77,32 @@ distributed-db-go/
 ## 🧪 Usage Examples
 ### 📌 Create database (master only)
 
-```http
-POST /init_database
-{
-  "db_name": "DDB0",
-  "user": "root",
-  "password": "rootroot",
-  "host": "localhost:3306"
-}
+```
+curl -X POST http:// IPv4 Address:8080/execute -d '{
+  "action": "create_db",
+  "database": "testdb"
+}'
 ```
 
 ### 📌 Create Table (master only)
 
-```curl -X POST http:// IPv4 Address:8080/execute -d '{
-  "action": "create_db",
-  "database": "testdb"
+```
+curl -X POST http://IPv4 Address:8080/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "create_table",
+    "database": "school",
+    "table": "students",
+    "columns": ["id INT PRIMARY KEY", "name VARCHAR(50)", "age INT"]
 }'
+
 
 ```
 
 ### 📌 Insert Record (any node)
 
-```curl -X POST http://IPv4 Address:8080/execute -d '{
+```
+curl -X POST http://IPv4 Address:8080/execute -d '{
 "action": "insert",
 "database": "testdb",
 "table": "users",
@@ -107,13 +111,67 @@ POST /init_database
 }'
 ```
  
+### 📌 Delete Record (any node)
 
+```
+curl -X POST http://IPv4 Address:8080/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "delete",
+    "database": "school",
+    "table": "students",
+    "where": "id = 1"
+}'
 
+```
+### 📌 Select Record (any node)
 
+```
+curl -X POST http://IPv4 Address:8080/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "select",
+    "database": "school",
+    "table": "students",
+    "where": ""
+}'
+```
+### 📌 Update Record (any node)
+```
+curl -X POST http://IPv4 Address:8080/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "update",
+    "database": "school",
+    "table": "students",
+    "columns": ["name"],
+    "values": ["Alicia"],
+    "where": "id = 1"
+}'
+```
+### 📌 Drop Table ((master only))
+```
+curl -X POST http://192.168.107.51:8080/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "drop_table",
+    "database": "school",
+    "table": "students"
+}'
+```
 
+### 📌 Drop Database ((master only))
+```
+curl -X POST http://192.168.107.51:8080/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "drop_db",
+    "database": "school"
+}'
+```
 ## 🔁 Replication
 
-- The master node automatically replicates write operations to the slave nodes via the `/replicate` endpoint.
+- The master (sebnd & recice) node automatically replicates write operations to the slave nodes via the `/replicate` endpoint.
 
 ---
 
